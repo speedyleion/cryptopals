@@ -8,8 +8,12 @@
 
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
+use std::ops::BitXor;
 
-static LOOKUP_TABLE: Lazy<HashMap<char, u8>> = Lazy::new(|| {
+static INDEX_TO_CHAR: [char; 16] = [
+    '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+];
+static CHAR_TO_BYTE: Lazy<HashMap<char, u8>> = Lazy::new(|| {
     let mut m = HashMap::new();
     m.insert('0', 0u8);
     m.insert('1', 1);
@@ -48,8 +52,8 @@ impl<T: AsRef<str>> From<T> for Hex {
         let lower = string[1..].chars().step_by(2);
 
         for (high, low) in upper.zip(lower) {
-            let high_nyble = LOOKUP_TABLE.get(&high).unwrap();
-            let low_nyble = LOOKUP_TABLE.get(&low).unwrap();
+            let high_nyble = CHAR_TO_BYTE.get(&high).unwrap();
+            let low_nyble = CHAR_TO_BYTE.get(&low).unwrap();
             let value = (high_nyble << 4) | low_nyble;
             bytes.push(value);
         }
@@ -60,6 +64,34 @@ impl<T: AsRef<str>> From<T> for Hex {
 impl<'a> From<&'a Hex> for &'a [u8] {
     fn from(hex: &'a Hex) -> Self {
         &hex.bytes
+    }
+}
+
+impl From<&Hex> for String {
+    fn from(hex: &Hex) -> Self {
+        let mut string = String::new();
+        for byte in hex.bytes.iter() {
+            let high = byte >> 4;
+            let low = byte & 0xF;
+            string.push(INDEX_TO_CHAR[high as usize]);
+            string.push(INDEX_TO_CHAR[low as usize]);
+        }
+        string
+    }
+}
+
+impl BitXor for Hex {
+    type Output = Self;
+
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        assert_eq!(self.bytes.len(), rhs.bytes.len());
+        let bytes = self
+            .bytes
+            .iter()
+            .zip(rhs.bytes.iter())
+            .map(|(x, y)| *x ^ *y)
+            .collect();
+        Self { bytes }
     }
 }
 
@@ -85,5 +117,14 @@ mod test {
                 bytes: Vec::from(expected)
             }
         );
+    }
+
+    #[test]
+    fn xor_hex_strings() {
+        let first = "1c0111001f010100061a024b53535009181c";
+        let second = "686974207468652062756c6c277320657965";
+        let expected = "746865206b696420646f6e277420706c6179";
+        let xor = Hex::from(first) ^ Hex::from(second);
+        assert_eq!(String::from(&xor), expected.to_string())
     }
 }
