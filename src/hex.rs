@@ -34,14 +34,13 @@ static CHAR_TO_BYTE: Lazy<HashMap<char, u8>> = Lazy::new(|| {
     m
 });
 
-#[derive(Debug, Default, Eq, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Default, Eq, PartialEq, PartialOrd)]
 pub struct Hex {
     bytes: Vec<u8>,
 }
 
-impl<T: AsRef<str>> From<T> for Hex {
-    fn from(string: T) -> Self {
-        let string = string.as_ref();
+impl From<&str> for Hex {
+    fn from(string: &str) -> Self {
         let mut bytes = vec![];
         if string.is_empty() {
             return Self { bytes };
@@ -58,6 +57,14 @@ impl<T: AsRef<str>> From<T> for Hex {
             bytes.push(value);
         }
         Self { bytes }
+    }
+}
+
+impl From<&[u8]> for Hex {
+    fn from(bytes: &[u8]) -> Self {
+        Hex {
+            bytes: Vec::from(bytes),
+        }
     }
 }
 
