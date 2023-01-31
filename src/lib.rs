@@ -13,7 +13,11 @@ use hex::Hex;
 static WEIGHTS: &str = "ETAOIN SHRDLU";
 
 fn xor_encrypt(input: &[u8], key: &[u8]) -> Hex {
-    let bytes = input.into_iter().zip(iter::repeat_with(|| key).flatten()).map(|(a, b)| a^b).collect::<Vec<_>>();
+    let bytes = input
+        .into_iter()
+        .zip(iter::repeat_with(|| key).flatten())
+        .map(|(a, b)| a ^ b)
+        .collect::<Vec<_>>();
     Hex::from(bytes.as_slice())
 }
 
@@ -51,12 +55,16 @@ fn get_weighted_key(cipher: &Hex) -> (u8, f32) {
 /// Given a list of hex strings will find the one with the most likely text string and it's
 /// xored byte
 pub fn crack_list_of_codes(codes: &[Hex]) -> (u8, String, usize, String) {
-    let (raw, key, index, _) = codes.into_iter().enumerate().map(|(index, c)| {
-        let (key, weight) = get_weighted_key(c);
-        (c, key, index, weight)
-    }).max_by(|(_, _, _, x), (_, _, _, y)| x.partial_cmp(y).unwrap()).unwrap();
+    let (raw, key, index, _) = codes
+        .into_iter()
+        .enumerate()
+        .map(|(index, c)| {
+            let (key, weight) = get_weighted_key(c);
+            (c, key, index, weight)
+        })
+        .max_by(|(_, _, _, x), (_, _, _, y)| x.partial_cmp(y).unwrap())
+        .unwrap();
     (key, decode_bytes(key, raw).unwrap(), index, raw.into())
-
 }
 
 fn weight_characters(message: &str) -> f32 {
@@ -73,10 +81,10 @@ fn weight_characters(message: &str) -> f32 {
 
 #[cfg(test)]
 mod test {
-    use std::fs::File;
     use super::*;
-    use std::io::{BufRead, BufReader};
     use hex::Hex;
+    use std::fs::File;
+    use std::io::{BufRead, BufReader};
 
     // Disabling this test, it resolves to:
     //
@@ -124,8 +132,19 @@ mod test {
     #[test]
     fn find_encrypted_string_in_file() {
         let file = File::open("tests/assets/4.txt").unwrap();
-        let lines = BufReader::new(file).lines().map(|f| Hex::from(&f.unwrap())).collect::<Vec<_>>();
-        assert_eq!(crack_list_of_codes(lines.as_slice()), (53, "Now that the party is jumping\n".to_owned(), 170, "7b5a4215415d544115415d5015455447414c155c46155f4058455c5b523f".to_owned()));
+        let lines = BufReader::new(file)
+            .lines()
+            .map(|f| Hex::from(&f.unwrap()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            crack_list_of_codes(lines.as_slice()),
+            (
+                53,
+                "Now that the party is jumping\n".to_owned(),
+                170,
+                "7b5a4215415d544115415d5015455447414c155c46155f4058455c5b523f".to_owned()
+            )
+        );
     }
 
     #[test]
