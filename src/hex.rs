@@ -39,6 +39,11 @@ pub struct Hex {
     bytes: Vec<u8>,
 }
 
+impl From<&String> for Hex {
+    fn from(string: &String) -> Self {
+        Hex::from(string.as_str())
+    }
+}
 impl From<&str> for Hex {
     fn from(string: &str) -> Self {
         let mut bytes = vec![];
