@@ -4,12 +4,18 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+use std::iter;
 mod base64;
 mod hex;
 
 use hex::Hex;
 
 static WEIGHTS: &str = "ETAOIN SHRDLU";
+
+fn xor_encrypt(input: &[u8], key: &[u8]) -> Hex {
+    let bytes = input.into_iter().zip(iter::repeat_with(|| key).flatten()).map(|(a, b)| a^b).collect::<Vec<_>>();
+    Hex::from(bytes.as_slice())
+}
 
 fn decode_bytes(key_byte: u8, cipher: &Hex) -> Result<String, ()> {
     let key = vec![key_byte; <&[u8]>::from(cipher).len()];
@@ -120,5 +126,13 @@ mod test {
         let file = File::open("tests/assets/4.txt").unwrap();
         let lines = BufReader::new(file).lines().map(|f| Hex::from(&f.unwrap())).collect::<Vec<_>>();
         assert_eq!(crack_list_of_codes(lines.as_slice()), (53, "Now that the party is jumping\n".to_owned(), 170, "7b5a4215415d544115415d5015455447414c155c46155f4058455c5b523f".to_owned()));
+    }
+
+    #[test]
+    fn repeating_xor_apply() {
+        let input = "Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal";
+        let expected = Hex::from("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f");
+
+        assert_eq!(xor_encrypt(input.as_bytes(), b"ICE"), expected);
     }
 }
