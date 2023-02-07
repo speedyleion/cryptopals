@@ -4,7 +4,6 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-mod base64;
 mod hex;
 
 use hex::Hex;
@@ -78,12 +77,63 @@ fn weight_characters(message: &str) -> f32 {
     total_weight as f32 / message.len() as f32
 }
 
+fn hamming_distance(b1: &[u8], b2: &[u8]) -> usize {
+    assert_eq!(b1.len(), b2.len());
+    let diff = Hex::from(b1) ^ Hex::from(b2);
+    let bytes: &[u8] = (&diff).into();
+
+    let distance = bytes.iter().fold(0, |accum, b| accum + b.count_ones());
+    distance as usize
+}
+
+fn crack_repeating_xor(cipher: &Hex) -> String {
+    let key_size = find_key_size(cipher);
+    let bytes: &[u8] = cipher.into();
+    let height = bytes.len() / key_size;
+    let mut transposed = vec![0; key_size * height];
+    transpose::transpose(&bytes[..transposed.len()], transposed.as_mut_slice(), key_size, height);
+    let cipher_blocks = transposed.chunks_exact(height);
+
+    let mut key = vec![];
+    for block in cipher_blocks {
+        let (byte, _) = crack_single_byte_xor(&block.into());
+        key.push(byte);
+    }
+    let hex = xor_encrypt(cipher.into(), &key);
+    std::str::from_utf8(<&[u8]>::from(&hex)).unwrap().to_owned()
+
+}
+
+fn find_key_size(cipher: &Hex) -> usize {
+    let bytes: &[u8] = cipher.into();
+    let mut distances = vec![];
+    for size in 1..=40 {
+        let mut chunks = bytes.chunks_exact(size);
+        let c1 = chunks.next().unwrap();
+        let c2 = chunks.next().unwrap();
+        let c3 = chunks.next().unwrap();
+        let c4 = chunks.next().unwrap();
+        let d1 = hamming_distance(c1, c2);
+        let d2 = hamming_distance(c1, c3);
+        let d3 = hamming_distance(c1, c4);
+        let d4 = hamming_distance(c2, c3);
+        let d5 = hamming_distance(c2, c4);
+        let d6 = hamming_distance(c3, c4);
+        let distance = (d1 + d2 + d4 + d3 + d5 + d6) as f32 / 6f32;
+        let distance = distance / (size * 8) as f32;
+        distances.push(distance);
+    }
+    let (key_size, _) = distances.iter().enumerate().min_by(|(_, x), (_, y)| x.partial_cmp(y).unwrap()).unwrap();
+    key_size + 1 // 0 based, but 1 based key size
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use hex::Hex;
     use std::fs::File;
     use std::io::{BufRead, BufReader};
+    use base64::Engine;
 
     // Disabling this test, it resolves to:
     //
@@ -152,5 +202,22 @@ mod test {
         let expected = Hex::from("0b3637272a2b2e63622c2e69692a23693a2a3c6324202d623d63343c2a26226324272765272a282b2f20430a652e2c652a3124333a653e2b2027630c692b20283165286326302e27282f");
 
         assert_eq!(xor_encrypt(input.as_bytes(), b"ICE"), expected);
+    }
+
+    #[test]
+    fn hamming_distance_of_known_string() {
+        let b1 = b"this is a test";
+        let b2 = b"wokka wokka!!!";
+        assert_eq!(hamming_distance(b1, b2), 37)
+    }
+
+    #[test]
+    fn crack_repeating_xor_file() {
+        let file = File::open("tests/assets/6.txt").unwrap();
+        let base_64 = BufReader::new(file).lines().fold(String::new(), |mut acc, e| {acc.push_str(&e.unwrap()); acc});
+        let bytes = base64::engine::general_purpose::STANDARD.decode(base_64.as_bytes()).unwrap();
+        let cipher = Hex::from(bytes.as_slice());
+        assert_eq!(find_key_size(&cipher), 29);
+        assert!(crack_repeating_xor(&cipher).starts_with("I'm back and I'm ringin' the bell"));
     }
 }
