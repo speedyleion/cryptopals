@@ -4,7 +4,6 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-use std::iter;
 mod base64;
 mod hex;
 
@@ -15,7 +14,7 @@ static WEIGHTS: &str = "ETAOIN SHRDLU";
 fn xor_encrypt(input: &[u8], key: &[u8]) -> Hex {
     let bytes = input
         .into_iter()
-        .zip(iter::repeat_with(|| key).flatten())
+        .zip(key.iter().cycle())
         .map(|(a, b)| a ^ b)
         .collect::<Vec<_>>();
     Hex::from(bytes.as_slice())
