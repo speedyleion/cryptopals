@@ -4,6 +4,8 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+extern crate core;
+
 mod ecb;
 mod hex;
 
@@ -13,7 +15,7 @@ static WEIGHTS: &str = "ETAOIN SHRDLU";
 
 fn xor_encrypt(input: &[u8], key: &[u8]) -> Hex {
     let bytes = input
-        .into_iter()
+        .iter()
         .zip(key.iter().cycle())
         .map(|(a, b)| a ^ b)
         .collect::<Vec<_>>();
@@ -55,7 +57,7 @@ fn get_weighted_key(cipher: &Hex) -> (u8, f32) {
 /// xored byte
 pub fn crack_list_of_codes(codes: &[Hex]) -> (u8, String, usize, String) {
     let (raw, key, index, _) = codes
-        .into_iter()
+        .iter()
         .enumerate()
         .map(|(index, c)| {
             let (key, weight) = get_weighted_key(c);
@@ -92,7 +94,12 @@ fn crack_repeating_xor(cipher: &Hex) -> String {
     let bytes: &[u8] = cipher.into();
     let height = bytes.len() / key_size;
     let mut transposed = vec![0; key_size * height];
-    transpose::transpose(&bytes[..transposed.len()], transposed.as_mut_slice(), key_size, height);
+    transpose::transpose(
+        &bytes[..transposed.len()],
+        transposed.as_mut_slice(),
+        key_size,
+        height,
+    );
     let cipher_blocks = transposed.chunks_exact(height);
 
     let mut key = vec![];
@@ -102,7 +109,6 @@ fn crack_repeating_xor(cipher: &Hex) -> String {
     }
     let hex = xor_encrypt(cipher.into(), &key);
     std::str::from_utf8(<&[u8]>::from(&hex)).unwrap().to_owned()
-
 }
 
 fn find_key_size(cipher: &Hex) -> usize {
@@ -124,17 +130,21 @@ fn find_key_size(cipher: &Hex) -> usize {
         let distance = distance / (size * 8) as f32;
         distances.push(distance);
     }
-    let (key_size, _) = distances.iter().enumerate().min_by(|(_, x), (_, y)| x.partial_cmp(y).unwrap()).unwrap();
+    let (key_size, _) = distances
+        .iter()
+        .enumerate()
+        .min_by(|(_, x), (_, y)| x.partial_cmp(y).unwrap())
+        .unwrap();
     key_size + 1 // 0 based, but 1 based key size
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use base64::Engine;
     use hex::Hex;
     use std::fs::File;
     use std::io::{BufRead, BufReader};
-    use base64::Engine;
 
     // Disabling this test, it resolves to:
     //
@@ -215,8 +225,15 @@ mod test {
     #[test]
     fn crack_repeating_xor_file() {
         let file = File::open("tests/assets/6.txt").unwrap();
-        let base_64 = BufReader::new(file).lines().fold(String::new(), |mut acc, e| {acc.push_str(&e.unwrap()); acc});
-        let bytes = base64::engine::general_purpose::STANDARD.decode(base_64.as_bytes()).unwrap();
+        let base_64 = BufReader::new(file)
+            .lines()
+            .fold(String::new(), |mut acc, e| {
+                acc.push_str(&e.unwrap());
+                acc
+            });
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(base_64.as_bytes())
+            .unwrap();
         let cipher = Hex::from(bytes.as_slice());
         assert_eq!(find_key_size(&cipher), 29);
         assert!(crack_repeating_xor(&cipher).starts_with("I'm back and I'm ringin' the bell"));
