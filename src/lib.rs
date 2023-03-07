@@ -9,6 +9,7 @@ extern crate core;
 mod ecb;
 mod hex;
 mod pkcs;
+mod cbc;
 
 use hex::Hex;
 
