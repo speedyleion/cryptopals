@@ -3,9 +3,8 @@
 //    (See accompanying file LICENSE or copy at
 //          https://www.boost.org/LICENSE_1_0.txt)
 
-
-use aes::{Aes128, Block};
 use aes::cipher::{BlockDecrypt, BlockEncrypt, BlockSizeUser, KeyInit};
+use aes::{Aes128, Block};
 
 trait Xor {
     fn xor(&mut self, other: &Self);
@@ -13,7 +12,8 @@ trait Xor {
 
 impl Xor for Block {
     fn xor(&mut self, other: &Self) {
-        self.as_mut_slice().iter_mut()
+        self.as_mut_slice()
+            .iter_mut()
             .zip(other.as_slice().iter())
             .for_each(|(a, b)| *a = *a ^ *b);
     }
@@ -37,10 +37,13 @@ pub fn encrypt(key: impl AsRef<[u8]>, iv: impl AsRef<[u8]>, raw: impl AsRef<[u8]
         iv_block = *out_block;
     }
     output
-
 }
 
-fn cbc_decrypt(key: impl AsRef<[u8]>, iv: impl AsRef<[u8]>, encrypted: impl AsRef<[u8]>) -> Vec<u8> {
+fn cbc_decrypt(
+    key: impl AsRef<[u8]>,
+    iv: impl AsRef<[u8]>,
+    encrypted: impl AsRef<[u8]>,
+) -> Vec<u8> {
     let encrypted = encrypted.as_ref();
     let decryptor = Aes128::new_from_slice(key.as_ref()).unwrap();
     let mut output = vec![0; encrypted.len()];
@@ -58,15 +61,14 @@ fn cbc_decrypt(key: impl AsRef<[u8]>, iv: impl AsRef<[u8]>, encrypted: impl AsRe
         iv_block = *in_block;
     }
     output
-
 }
 
 #[cfg(test)]
 mod test {
+    use super::*;
+    use base64::Engine;
     use std::fs::File;
     use std::io::{BufRead, BufReader};
-    use base64::Engine;
-    use super::*;
 
     #[test]
     fn yellow_sub() {

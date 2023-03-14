@@ -6,11 +6,10 @@
 
 extern crate core;
 
+mod cbc;
 mod ecb;
 mod hex;
 mod pkcs;
-mod cbc;
-use once_cell::sync::Lazy;
 use rand::Rng;
 
 const BLOCK_SIZE: usize = 16;
@@ -20,7 +19,9 @@ fn random_prefix_and_suffix(input: impl AsRef<[u8]>) -> Vec<u8> {
     let prefix_size = rng.gen_range(5..=10);
     let suffix_size = rng.gen_range(5..=10);
 
-    let mut output = (0..prefix_size).map(|_| rand::Rng::gen::<u8>(&mut rng)).collect::<Vec<_>>();
+    let mut output = (0..prefix_size)
+        .map(|_| rand::Rng::gen::<u8>(&mut rng))
+        .collect::<Vec<_>>();
     output.extend(input.as_ref());
     output.extend((0..suffix_size).map(|_| rand::Rng::gen::<u8>(&mut rng)));
     output
@@ -33,17 +34,17 @@ enum EncryptionMode {
 }
 
 fn opaque_cbc_or_ecb_encryptor(input: impl AsRef<[u8]>) -> (Vec<u8>, EncryptionMode) {
-    static KEY: Lazy<[u8; BLOCK_SIZE]> = Lazy::new(|| {
-        let mut rng = rand::thread_rng();
-        Rng::gen::<[u8; BLOCK_SIZE]>(&mut rng)
-    });
     let mut rng = rand::thread_rng();
+    let key = Rng::gen::<[u8; BLOCK_SIZE]>(&mut rng);
     let input = pkcs::pad(random_prefix_and_suffix(input), BLOCK_SIZE as u8);
     if Rng::gen_bool(&mut rng, 0.5) {
-        (ecb::encrypt(KEY.as_ref(), input), EncryptionMode::ECB)
+        (ecb::encrypt(key.as_ref(), input), EncryptionMode::ECB)
     } else {
         let iv = rand::Rng::gen::<[u8; BLOCK_SIZE]>(&mut rng);
-        (cbc::encrypt(KEY.as_ref(), iv.as_ref(), input), EncryptionMode::CBC)
+        (
+            cbc::encrypt(key.as_ref(), iv.as_ref(), input),
+            EncryptionMode::CBC,
+        )
     }
 }
 

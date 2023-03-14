@@ -29,6 +29,9 @@ mod test {
 
     #[test]
     fn yellow_submarine_20() {
-        assert_eq!(pad(b"YELLOW SUBMARINE", 20), b"YELLOW SUBMARINE\x04\x04\x04\x04");
+        assert_eq!(
+            pad(b"YELLOW SUBMARINE", 20),
+            b"YELLOW SUBMARINE\x04\x04\x04\x04"
+        );
     }
 }
