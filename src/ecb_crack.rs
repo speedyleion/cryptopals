@@ -9,9 +9,10 @@ fn fixed_ecb_encryptor(input: impl AsRef<[u8]>) -> Vec<u8> {
 
 fn compute_byte_map(block_prefix: &[u8]) -> HashMap<u8, u8> {
     let mut byte_map = HashMap::new();
+    let mut input = block_prefix.to_vec();
+    input.push(0);
     for i in 0..=255 {
-        let mut input = block_prefix.to_vec();
-        input.push(i);
+        input[BLOCK_SIZE -1] = i;
         let output = fixed_ecb_encryptor(&input);
         byte_map.insert(output[BLOCK_SIZE - 1], i);
     }
@@ -48,6 +49,6 @@ mod test {
             .decode(input)
             .unwrap();
         let cracked = crack_ecb(&plaintext);
-        assert_eq!(String::from_utf8(cracked).unwrap(), "what")
+        assert_eq!(String::from_utf8_lossy(&cracked), "what")
     }
 }
