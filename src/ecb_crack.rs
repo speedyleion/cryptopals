@@ -7,14 +7,13 @@ fn fixed_ecb_encryptor(input: impl AsRef<[u8]>) -> Vec<u8> {
     ecb::encrypt(key.as_ref(), input)
 }
 
-fn compute_byte_map(block_prefix: &[u8]) -> Vec<u8> {
-    let mut byte_map = Vec::with_capacity(256);
-    let mut input = block_prefix.to_vec();
-    input.push(0);
-    for i in 0..=255 {
-        input[BLOCK_SIZE -1] = i;
+fn compute_byte_map(block_prefix: &[u8]) -> HashMap<u8, u8> {
+    let mut byte_map = HashMap::new();
+    for i in 0..=127 {
+        let mut input = block_prefix.to_vec();
+        input.push(i);
         let output = fixed_ecb_encryptor(&input);
-        byte_map.push(output[BLOCK_SIZE - 1]);
+        byte_map.insert(output[BLOCK_SIZE - 1], i);
     }
     byte_map
 }
@@ -28,8 +27,7 @@ fn crack_ecb(plaintext: impl AsRef<[u8]>) -> Vec<u8> {
         let byte_map = compute_byte_map(&block[..BLOCK_SIZE - 1]);
         block[BLOCK_SIZE - 1] = *byte;
         let first_block = fixed_ecb_encryptor(&block);
-        let position = byte_map.iter().enumerate().position(|(p, x)| x == &first_block[BLOCK_SIZE - 1] && (p > 31 || p == 10)).unwrap();
-        let decoded_byte = position as u8;
+        let decoded_byte = byte_map[&first_block[BLOCK_SIZE - 1]];
         output.push(decoded_byte);
         block.remove(0);
         block.push(decoded_byte);
