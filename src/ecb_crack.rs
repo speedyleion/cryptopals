@@ -1,12 +1,9 @@
-use std::collections::{HashMap, VecDeque};
-use rand::{Rng, SeedableRng};
-use rand_chacha::ChaChaRng;
-use crate::{BLOCK_SIZE, ecb, pkcs, random_prefix_and_suffix};
+use std::collections::HashMap;
+use crate::{BLOCK_SIZE, ecb, pkcs};
 
 fn fixed_ecb_encryptor(input: impl AsRef<[u8]>) -> Vec<u8> {
-    let mut rng = ChaChaRng::seed_from_u64(0);
-    let key = Rng::gen::<[u8; BLOCK_SIZE]>(&mut rng);
-    let input = pkcs::pad(random_prefix_and_suffix(input), BLOCK_SIZE as u8);
+    let key = [0u8; BLOCK_SIZE];
+    let input = pkcs::pad(input, BLOCK_SIZE as u8);
     ecb::encrypt(key.as_ref(), input)
 }
 
