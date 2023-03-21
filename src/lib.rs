@@ -10,6 +10,8 @@ mod cbc;
 mod ecb;
 mod hex;
 mod pkcs;
+mod ecb_crack;
+
 use rand::Rng;
 
 const BLOCK_SIZE: usize = 16;
